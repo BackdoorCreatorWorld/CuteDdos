@@ -153,10 +153,10 @@ class AntiWebAttack:
     
     def start(self):
         """Start the anti-web attack"""
-        print(f"{Fore.YELLOW}\n   ╰─❯ Starting Anti-Web Attack on {self.target_url}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Threads: {self.threads}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Techniques: Raw Sockets, Header Spoofing, Method Randomization{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Press Ctrl+C to stop\n{Style.RESET_ALL}")
+        print(Fore.YELLOW + "\n   ╰─❯ Starting Anti-Web Attack on " + self.target_url + Style.RESET_ALL)
+        print(Fore.YELLOW + "   ╰─❯ Threads: " + str(self.threads) + Style.RESET_ALL)
+        print(Fore.YELLOW + "   ╰─❯ Techniques: Raw Sockets, Header Spoofing, Method Randomization" + Style.RESET_ALL)
+        print(Fore.YELLOW + "   ╰─❯ Press Ctrl+C to stop\n" + Style.RESET_ALL)
         
         # Start workers
         for i in range(self.threads):
@@ -171,7 +171,7 @@ class AntiWebAttack:
                 time.sleep(5)
                 new_req = self.request_count - last_count
                 last_count = self.request_count
-                print(f"{Fore.CYAN}   ╰─❯ Requests: {self.request_count} | Rate: {new_req/5:.1f} rps{Style.RESET_ALL}")
+                print(Fore.CYAN + "   ╰─❯ Requests: " + str(self.request_count) + " | Rate: " + str(new_req/5) + " rps" + Style.RESET_ALL)
                 
         except KeyboardInterrupt:
             self.stop()
@@ -179,5 +179,5 @@ class AntiWebAttack:
     def stop(self):
         """Stop the attack"""
         self.running = False
-        print(f"{Fore.RED}\n   ╰─❯ Stopping Anti-Web Attack...{Style.RESET_ALL}")
-        print(f"{Fore.RED}  
+        print(Fore.RED + "\n   ╰─❯ Stopping Anti-Web Attack..." + Style.RESET_ALL)
+        print(Fore.RED + "   ╰─❯ Total requests: " + str(self.request_count) + Style.RESET_ALL)
