@@ -26,7 +26,7 @@ pkg update && pkg upgrade -y
 pkg install python git -y
 
 # Clone repository
-git clone https://github.com/yourusername/ddos-attack-suite.git
+git clone https://github.com/BackdoorCreatorWorld/CuteDdos
 
 # Enter directory
 cd ddos-attack-suite
